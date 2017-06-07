@@ -1265,6 +1265,7 @@ DISSECTOR_SRC = \
 	packet-starteam.c	\
 	packet-stat-notify.c	\
 	packet-stat.c		\
+	packet-strfs.c		\
 	packet-stt.c		\
 	packet-stun.c		\
 	packet-sua.c		\

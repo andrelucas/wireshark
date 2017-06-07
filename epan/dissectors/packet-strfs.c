@@ -63,6 +63,9 @@ static int hf_strfs_payload_len = -1;
 static int hf_strfs_reserved0 = -1;
 static int hf_strfs_reserved1 = -1;
 
+/* Offsets into the header. */
+#define STRFS_OFF_FINGERPRINT 0
+
 /* static expert_field ei_strfs_EXPERTABBREV = EI_INIT; */
 
 /* Global sample preference ("controls" display of numbers) */
@@ -76,7 +79,7 @@ static guint tcp_port_pref = STRFS_TCP_PORT;
 
 /* Initialize the subtree pointers */
 static gint ett_strfs = -1;
-static gint ett_strfs_flags = -1;
+// static gint ett_strfs_flags = -1;
 
 #define STRFS_ACK 1
 #define STRFS_ERROR 2
@@ -84,13 +87,16 @@ static gint ett_strfs_flags = -1;
 static const value_string strfs_flags_vals[] = {
     {STRFS_ACK, "ACK"}, {STRFS_ERROR, "ERROR"}, {0, NULL}};
 
-static const int *flag_fields[] = {&hf_strfs_flags_ack, &hf_strfs_flags_error,
-                                   NULL};
+// static const int *flag_fields[] = {&hf_strfs_flags_ack,
+// &hf_strfs_flags_error,
+//                                    NULL};
 
 /* A sample #define of the minimum length (in bytes) of the protocol data.
  * If data is received with fewer than this many bytes it is rejected by
  * the current dissector. */
 #define STRFS_MIN_LENGTH 80
+
+#define STRFS_FINGERPRINT 0x5704a6e0
 
 /* Code to actually dissect the packets */
 static int dissect_strfs(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
@@ -103,16 +109,16 @@ static int dissect_strfs(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
   /* int len = 0; */
   uint32_t strfs_fingerprint;
   uint16_t strfs_len;
-  uint16_t strfs_flags;
-  // uint64_t client_xid, server_xid;
-  // uint64_t create_sec, create_nsec;
-  // uint64_t offset;
-  // uint64_t request_len;
-  // uint32_t volid;
-  // uint8_t type;
-  // uint8_t version;
-  // uint16_t payload_len;
-  // uint64_t reserved0, reserved1;
+  // uint16_t strfs_flags;
+  uint64_t strfs_client_xid, strfs_server_xid;
+  uint64_t strfs_create_sec, strfs_create_nsec;
+  uint64_t strfs_offset;
+  uint64_t strfs_request_len;
+  uint32_t strfs_volid;
+  uint8_t strfs_type;
+  uint8_t strfs_version;
+  uint16_t strfs_payload_len;
+  uint64_t strfs_reserved0, strfs_reserved1;
 
   /*** HEURISTICS ***/
 
@@ -128,8 +134,8 @@ static int dissect_strfs(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
    */
 
   // /* Check that the packet is long enough for it to belong to us. */
-  // if (tvb_reported_length(tvb) < STRFS_MIN_LENGTH)
-  //   return 0;
+  if (tvb_reported_length(tvb) < STRFS_MIN_LENGTH)
+    return 0;
 
   /* Check that there's enough data present to run the heuristics. If there
    * isn't, reject the packet; it will probably be dissected as data and if
@@ -146,6 +152,10 @@ static int dissect_strfs(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
    * some other dissector a chance to dissect it. */
   /* if (TEST_HEURISTICS_FAIL)
     return 0; */
+
+  // Check the fingerprint 32-bit field.
+  if (tvb_get_ntohl(tvb, STRFS_OFF_FINGERPRINT) != STRFS_FINGERPRINT)
+    return 0;
 
   /*** COLUMN DATA ***/
 
@@ -211,7 +221,7 @@ static int dissect_strfs(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
   strfs_fingerprint = tvb_get_ntohl(tvb, offset);
   proto_tree_add_uint(strfs_tree, hf_strfs_fingerprint, tvb, offset, 4,
                       strfs_fingerprint);
-  offset += 2;
+  offset += 4;
 
   /* Some fields or situations may require "expert" analysis that can be
    * specifically highlighted. */
@@ -224,10 +234,66 @@ static int dissect_strfs(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
                       (uint32_t)strfs_len);
   offset += 2;
 
-  strfs_flags = tvb_get_ntohs(tvb, offset);
-  proto_tree_add_bitmask(strfs_tree, tvb, offset, hf_strfs_flags,
-                         ett_strfs_flags, flag_fields, ENC_BIG_ENDIAN);
+  // strfs_flags = tvb_get_ntohs(tvb, offset);
+  // proto_tree_add_bitmask(strfs_tree, tvb, offset, hf_strfs_flags,
+  //                        ett_strfs_flags, flag_fields, ENC_BIG_ENDIAN);
   offset += 2;
+
+  strfs_client_xid = tvb_get_ntoh64(tvb, offset);
+  proto_tree_add_uint64(strfs_tree, hf_strfs_client_xid, tvb, offset, 8,
+                        (uint64_t)strfs_client_xid);
+  offset += 8;
+
+  strfs_server_xid = tvb_get_ntoh64(tvb, offset);
+  proto_tree_add_uint64(strfs_tree, hf_strfs_server_xid, tvb, offset, 8,
+                        (uint64_t)strfs_server_xid);
+  offset += 8;
+
+  strfs_create_sec = tvb_get_ntoh64(tvb, offset);
+  proto_tree_add_uint64(strfs_tree, hf_strfs_create_sec, tvb, offset, 8,
+                        (uint64_t)strfs_create_sec);
+  offset += 8;
+
+  strfs_create_nsec = tvb_get_ntoh64(tvb, offset);
+  proto_tree_add_uint64(strfs_tree, hf_strfs_create_nsec, tvb, offset, 8,
+                        (uint64_t)strfs_create_nsec);
+  offset += 8;
+
+  strfs_offset = tvb_get_ntoh64(tvb, offset);
+  proto_tree_add_uint64(strfs_tree, hf_strfs_offset, tvb, offset, 8,
+                        (uint64_t)strfs_offset);
+  offset += 8;
+
+  strfs_request_len = tvb_get_ntoh64(tvb, offset);
+  proto_tree_add_uint64(strfs_tree, hf_strfs_request_len, tvb, offset, 8,
+                        (uint64_t)strfs_request_len);
+  offset += 8;
+
+  strfs_volid = tvb_get_ntohl(tvb, offset);
+  proto_tree_add_uint(strfs_tree, hf_strfs_volid, tvb, offset, 4, strfs_volid);
+  offset += 4;
+
+  strfs_type = tvb_get_guint8(tvb, offset);
+  proto_tree_add_item(strfs_tree, hf_strfs_type, tvb, offset, 1, ENC_NA);
+  offset += 1;
+
+  strfs_version = tvb_get_guint8(tvb, offset);
+  proto_tree_add_item(strfs_tree, hf_strfs_version, tvb, offset, 1, ENC_NA);
+  offset += 1;
+
+  strfs_payload_len = tvb_get_ntohs(tvb, offset);
+  proto_tree_add_item(strfs_tree, hf_strfs_payload_len, tvb, offset, 2, ENC_NA);
+  offset += 2;
+
+  strfs_reserved0 = tvb_get_ntoh64(tvb, offset);
+  proto_tree_add_uint64(strfs_tree, hf_strfs_reserved0, tvb, offset, 8,
+                        (uint64_t)strfs_reserved0);
+  offset += 8;
+
+  strfs_reserved1 = tvb_get_ntoh64(tvb, offset);
+  proto_tree_add_uint64(strfs_tree, hf_strfs_reserved1, tvb, offset, 8,
+                        (uint64_t)strfs_reserved1);
+  offset += 8;
 
   /* Continue adding tree items to process the packet here... */
 

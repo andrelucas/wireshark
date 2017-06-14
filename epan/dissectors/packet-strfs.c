@@ -62,6 +62,7 @@ static int hf_strfs_version = -1;
 static int hf_strfs_payload_len = -1;
 static int hf_strfs_reserved0 = -1;
 static int hf_strfs_reserved1 = -1;
+static int hf_strfs_data = -1;
 
 /* Offsets into the header. */
 #define STRFS_OFF_FINGERPRINT 0
@@ -153,9 +154,9 @@ static int dissect_strfs(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
   /* if (TEST_HEURISTICS_FAIL)
     return 0; */
 
-  // Check the fingerprint 32-bit field.
-  if (tvb_get_ntohl(tvb, STRFS_OFF_FINGERPRINT) != STRFS_FINGERPRINT)
-    return 0;
+  // Check the fingerprint 32-bit field. XXX no - show if it's invalid.
+  // if (tvb_get_ntohl(tvb, STRFS_OFF_FINGERPRINT) != STRFS_FINGERPRINT)
+  //   return 0;
 
   /*** COLUMN DATA ***/
 
@@ -295,6 +296,12 @@ static int dissect_strfs(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
                         (uint64_t)strfs_reserved1);
   offset += 8;
 
+  if (strfs_payload_len > 0) {
+    DISSECTOR_ASSERT((tvb_reported_length(tvb) - offset) == strfs_payload_len);
+    proto_tree_add_item(strfs_tree, hf_strfs_data, tvb, offset,
+                        tvb_reported_length(tvb) - offset, ENC_NA);
+  }
+
   /* Continue adding tree items to process the packet here... */
 
   /* If this protocol has a sub-dissector call it here, see section 1.8 of
@@ -386,6 +393,11 @@ void proto_register_strfs(void) {
       {&hf_strfs_reserved1,
        {"Reserved field 1", "strfs.reserved1", FT_UINT64, BASE_HEX, NULL, 0x0,
         "strfs reserved1 field", HFILL}},
+
+      {&hf_strfs_data,
+       {"Data", "strfs.data", FT_BYTES, BASE_NONE, NULL, 0x0,
+        "strfs payload data", HFILL}},
+
   };
 
   /* Setup protocol subtree array */

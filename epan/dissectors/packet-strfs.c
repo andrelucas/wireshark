@@ -36,6 +36,7 @@
 #include <epan/packet.h>
 #include <epan/prefs.h>
 #include <epan/tap.h>
+#include <inttypes.h>
 #include <stdlib.h>
 
 /* Prototypes */
@@ -275,11 +276,12 @@ static int dissect_strfs(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
   offset += 4;
 
   strfs_type = tvb_get_guint8(tvb, offset);
-  proto_tree_add_item(strfs_tree, hf_strfs_type, tvb, offset, 1, ENC_NA);
+  proto_tree_add_uint(strfs_tree, hf_strfs_type, tvb, offset, 1, strfs_type);
   offset += 1;
 
   strfs_version = tvb_get_guint8(tvb, offset);
-  proto_tree_add_item(strfs_tree, hf_strfs_version, tvb, offset, 1, ENC_NA);
+  proto_tree_add_uint(strfs_tree, hf_strfs_version, tvb, offset, 1,
+                      strfs_version);
   offset += 1;
 
   strfs_payload_len = tvb_get_ntohs(tvb, offset);
